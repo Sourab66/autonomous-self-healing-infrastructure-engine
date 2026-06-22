@@ -1,0 +1,331 @@
+{
+  "name": "Autonomous Self-Healing Infrastructure & Security Patching Engine",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "production-crash",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -368,
+        -80
+      ],
+      "id": "76668f90-2f1e-420e-b477-1d84b73b12d4",
+      "name": "On Production Crash",
+      "webhookId": "a185cba0-f2f6-46c7-9fee-6887a6493cde"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "2d970eb3-4f70-4a8b-a639-7e4a2f50d1c7",
+              "leftValue": "={{ $json.output }}",
+              "rightValue": "High",
+              "operator": {
+                "type": "string",
+                "operation": "contains"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        288,
+        -112
+      ],
+      "id": "b636b42c-d093-4865-a749-b15252140d08",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Crash Error: {{$json.body.error}}\nService: {{$json.body.service}}",
+        "options": {
+          "systemMessage": "You are a Senior Site Reliability Engineer (SRE).\n\nAnalyze the provided application crash error and classify its severity.\n\nRules:\n\n1. Use only the information provided in the input.\n2. Do not invent exception types.\n3. Do not assume technologies that are not mentioned.\n4. Return only valid JSON.\n5. No markdown, no explanations, no code fences.\n6. Severity must be determined using the classification rules below.\n\nSeverity Classification Rules:\n\nCritical:\n\n* Complete production outage\n* Database unavailable\n* Authentication system failure\n* Payment system failure\n* Security breach\n* Data loss\n* Service unavailable for all users\n\nHigh:\n\n* Application crash\n* Unhandled exception\n* HTTP 500 Internal Server Error\n* API endpoint failure\n* Critical business functionality unavailable\n\nMedium:\n\n* Slow performance\n* Timeout errors\n* Partial feature degradation\n* Intermittent failures\n\nLow:\n\n* Validation errors\n* Non-critical warnings\n* Logging issues\n* Cosmetic or UI-related problems\n\nRequired JSON format:\n\n{\n\"exception_type\": \"\",\n\"likely_root_cause\": \"\",\n\"severity\": \"\",\n\"recommended_fix\": \"\"\n}\n\nExample:\n\nInput:\ndivision by zero\n\nOutput:\n{\n\"exception_type\": \"division by zero\",\n\"likely_root_cause\": \"invalid or missing input data\",\n\"severity\": \"High\",\n\"recommended_fix\": \"add input validation before performing division operations\"\n}\n\nReturn only the JSON object."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.1,
+      "position": [
+        -112,
+        -112
+      ],
+      "id": "9ba2239f-30db-4397-8a15-a55bc49c8f8d",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "model": "llama-3.3-70b-versatile",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "typeVersion": 1,
+      "position": [
+        560,
+        96
+      ],
+      "id": "c1f82f4d-cf75-4163-af52-d1fc5488e313",
+      "name": "Code Repair Agent",
+      "credentials": {
+        "groqApi": {
+          "id": "cW9yu3AGHwExqwyN",
+          "name": "sourab100"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Crash Analysis:\n\n{{$json.output}}",
+        "options": {
+          "systemMessage": "You are an expert software engineer specializing in debugging and production incident remediation.\n\nYour task is to analyze the crash investigation report and generate a safe code fix.\n\nInstructions:\n\n1. Identify the bug from the investigation report.\n2. Generate a corrected code example.\n3. Explain why the fix works.\n4. Prefer safe, defensive programming practices.\n5. Never suggest destructive commands.\n6. Never suggest deleting databases, files, or infrastructure.\n7. Never include commands such as:\n\n   * rm -rf\n   * DROP DATABASE\n   * DELETE FROM\n   * TRUNCATE TABLE\n   * sudo rm\n8. Base your answer only on the provided investigation report.\n9. Do not invent technologies, frameworks, or files that are not mentioned.\n\nReturn ONLY valid JSON.\n\nDo not wrap the response in markdown.\n\nDo not use `json or `.\n\nOutput format:\n\n{\n\"bug_summary\": \"\",\n\"fixed_code\": \"\",\n\"fix_reason\": \"\"\n}\n"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.1,
+      "position": [
+        592,
+        -128
+      ],
+      "id": "6f327531-e4c5-4f6c-9cce-dc8273ad9d98",
+      "name": "AI Agent1"
+    },
+    {
+      "parameters": {
+        "jsCode": "const output = $json.output;\n\nconst forbiddenKeywords = [\n  \"rm -rf\",\n  \"DROP DATABASE\",\n  \"DELETE FROM\",\n  \"TRUNCATE TABLE\",\n  \"sudo rm\",\n  \"shutdown\",\n  \"format c:\"\n];\n\nconst valid = !forbiddenKeywords.some(keyword =>\n  output.toLowerCase().includes(keyword.toLowerCase())\n);\n\nreturn [\n  {\n    json: {\n      valid,\n      repair_output: output\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        992,
+        -128
+      ],
+      "id": "2839825b-5e6e-485e-ab71-27074d297a19",
+      "name": "Security Guardrail"
+    },
+    {
+      "parameters": {
+        "sendTo": "sourabgairola100@gmail.com",
+        "subject": "Production Incident - Human Approval Required",
+        "emailType": "text",
+        "message": "={{$json.emailBody}}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        1664,
+        -144
+      ],
+      "id": "29e326fb-d1cb-443c-b5de-a7c1ae5266b6",
+      "name": "Send a message",
+      "webhookId": "0b48d31c-889e-4588-9eb8-8fce8ab09e9a",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "zmCLMQ9E2iOcxuz1",
+          "name": "Gmail account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const repair = JSON.parse($json.repair_output);\n\nconst incidentId = `INC-${new Date().toISOString().slice(0,10).replace(/-/g,'')}-001`;\n\nconst emailBody = `\nPRODUCTION INCIDENT ALERT\n\n========================================\nINCIDENT SUMMARY\n========================================\n\nIncident ID: ${incidentId}\nService: user-api\nSeverity: High\nStatus: Awaiting Human Approval\n\n========================================\nBUG SUMMARY\n========================================\n\n${repair.bug_summary}\n\n========================================\nPROPOSED FIX\n========================================\n\n----------------------------------------\n\n${repair.fixed_code}\n\n----------------------------------------\n\n========================================\nWHY THIS FIX WORKS\n========================================\n\n${repair.fix_reason}\n\n========================================\nSECURITY VALIDATION\n========================================\n\n✅ PASSED\n\n========================================\nACTION REQUIRED\n========================================\n\nPlease review the proposed fix and approve deployment before applying changes to production.\n\n========================================\nWORKFLOW STATUS\n========================================\n\n✓ Crash Detected\n✓ AI Investigation Complete\n✓ Root Cause Analysis Complete\n✓ AI Repair Generated\n✓ Security Validation Passed\n⏳ Awaiting Human Approval\n\nGenerated by:\nAutonomous Self-Healing Infrastructure & Security Patching Engine\n`;\n\nreturn {\n  emailBody,\n  incidentId\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1472,
+        -128
+      ],
+      "id": "15e21be5-9e8c-44f9-9316-1764904111b1",
+      "name": "Format Approval Report"
+    },
+    {
+      "parameters": {
+        "model": "llama-3.3-70b-versatile",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "typeVersion": 1,
+      "position": [
+        -160,
+        128
+      ],
+      "id": "944f27b3-51e6-4056-82ac-a3e342bc3ffd",
+      "name": "AI Investigation",
+      "credentials": {
+        "groqApi": {
+          "id": "cW9yu3AGHwExqwyN",
+          "name": "sourab100"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "0113efca-72af-42ee-8c13-b582fb6e6c87",
+              "leftValue": "={{$json.valid}}",
+              "rightValue": "true",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1216,
+        -128
+      ],
+      "id": "9766d547-63fa-4392-8a7e-64ea0d0ae0ff",
+      "name": "If2"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "On Production Crash": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "AI Agent1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code Repair Agent": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent1",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent1": {
+      "main": [
+        [
+          {
+            "node": "Security Guardrail",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Security Guardrail": {
+      "main": [
+        [
+          {
+            "node": "If2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send a message": {
+      "main": [
+        []
+      ]
+    },
+    "Format Approval Report": {
+      "main": [
+        [
+          {
+            "node": "Send a message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Investigation": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If2": {
+      "main": [
+        [
+          {
+            "node": "Format Approval Report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "dad22931-8677-44ed-a468-7f7eb9b9e145",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "53f93ac4c1355d79b113636d530fcaefbe0c0e73b2cc39757f63cade27f7633a"
+  },
+  "id": "MsBdd9b86FcO0vih",
+  "tags": []
+}
