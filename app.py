@@ -17,13 +17,16 @@ def users():
 
     try:
 
-        x = 1/0
+        age = -5
 
-        return {"result": x}
+        if age < 0:
+            raise ValueError("Invalid age supplied")
+
+        return {"age": age}
 
     except Exception as e:
 
-        logging.exception("Application crashed")
+        logging.exception("Application warning")
 
         requests.post(
             N8N_WEBHOOK,
@@ -35,6 +38,10 @@ def users():
         )
 
         return {
-            "status": "error",
+            "status": "warning",
             "message": str(e)
         }
+
+
+
+
